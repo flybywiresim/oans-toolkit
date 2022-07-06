@@ -46,7 +46,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 ctx.fillStyle = 'yellow';
                 ctx.beginPath();
 
-                const NODE_RADIUS = NM_RADIUS * params.current.nmToPx / 600;
+                const NODE_RADIUS = (NM_RADIUS * params.current.nmToPx) / 600;
                 ctx.ellipse(x + cx, y + cy, NODE_RADIUS, NODE_RADIUS, 0, 0, 2 * Math.PI);
                 ctx.fill();
             } else if (element.type === 'way') {

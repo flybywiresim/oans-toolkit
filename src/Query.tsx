@@ -109,7 +109,7 @@ export const Query: FC = () => {
         for (const param of params) {
             query += `node["aeroway"="${param}"](area.searchArea);way["aeroway"="${param}"](area.searchArea);relation["aeroway"="${param}"](area.searchArea);`;
         }
-        return `[out:json];area[icao~"${icao}"]->.searchArea;(${query});out meta;out meta qt;`;
+        return `[out:json];area[icao~"${icao}"]->.searchArea;(${query});(._;>;);out meta;(._;>;);out meta qt;`;
     };
 
     return (
