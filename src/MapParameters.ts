@@ -32,8 +32,8 @@ export class MapParameters {
         const bearing = bearingTo(this.centerCoordinates, coordinates) - this.mapUpTrueDeg - 90;
         const distance = distanceTo(this.centerCoordinates, coordinates);
 
-        const xNm = distance * Math.cos(bearing * Math.PI / 180);
-        const yNm = distance * Math.sin(bearing * Math.PI / 180);
+        const xNm = distance * Math.cos((bearing * Math.PI) / 180);
+        const yNm = distance * Math.sin((bearing * Math.PI) / 180);
 
         return [
             xNm * this.nmToPx,
