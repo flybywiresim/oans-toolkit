@@ -8,13 +8,13 @@ hr {
 }
 
 input {
-    @apply bg-gray-50 border-2 border-gray-200 rounded-sm px-1;
+    @apply bg-gray-50 border-2 border-gray-200 rounded-sm px-1 outline-none;
 }
 
 button {
-    @apply bg-gray-50 border-2 border-blue-300 rounded-sm px-3;
+    @apply bg-gray-50 border-2 border-blue-300 rounded-sm px-3 transition duration-100 hover:border-gray-700;
 }
 
-button:hover {
-    @apply border-blue-700;
+code {
+    @apply font-mono;
 }

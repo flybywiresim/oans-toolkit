@@ -2,6 +2,11 @@
     "compilerOptions": {
         "esModuleInterop": true,
         "moduleResolution": "Node",
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "lib": [
+            "ES2021",
+            "dom",
+        ],
+        "downlevelIteration": true,
     }
 }
