@@ -1,0 +1,14 @@
+{
+    "root": true,
+    "env": {
+        "browser": true
+    },
+    "plugins": [
+        "@typescript-eslint"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "ecmaVersion": 2021
+    },
+    "extends": "@flybywiresim/eslint-config"
+}
