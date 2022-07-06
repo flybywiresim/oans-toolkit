@@ -2,6 +2,9 @@
     "name": "oans-server",
     "version": "0.1.0",
     "author": "FlyByWire Simulations",
+    "scripts": {
+        "start": "vite"
+    },
     "devDependencies": {
         "eslint": "^7.32.0",
         "@flybywiresim/eslint-config": "^0.2.3",
