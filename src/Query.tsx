@@ -22,9 +22,6 @@ export type OverpassElement =
         lon: number;
     })
 
-// eslint-disable-next-line max-len
-const overpassRequestBodyForIcao = (icao: string) => `[out:json]/*fixed by auto repair*/[timeout:25];\r\n// fetch area “airport” to search in\r\narea[icao~"${icao}"]->.searchArea;\r\n// gather results\r\n(\r\n  // query part for: “taxiway”\r\n  node["aeroway"="taxiway"](area.searchArea);\r\n  way["aeroway"="taxiway"](area.searchArea);\r\n  relation["aeroway"="taxiway"](area.searchArea);\r\n\r\n);\r\n// print results\r\nout meta;/*fixed by auto repair*/\r\n>;\r\nout meta qt;/*fixed by auto repair*/\r\n`;
-
 const FormattedObject = ({ object }: { object: Record<string, any> }) => (
     <>
         <p className="font-bold">{'{'}</p>
@@ -69,7 +66,7 @@ export const Query: FC = () => {
             'https://overpass-api.de/api/interpreter',
             {
                 method: 'POST',
-                body: overpassRequestBodyForIcao(value.toUpperCase()),
+                body: generateQuery(value.toUpperCase()),
                 headers: { 'Content-Type': 'application/xml' },
             },
         ).then((data) => data.json())
@@ -104,6 +101,15 @@ export const Query: FC = () => {
         const sanitized = value.replace(/^![0-9.,]+$/g, '');
 
         setter(parseFloat(sanitized));
+    };
+
+    const generateQuery = (icao: string): string => {
+        const params = ['aerodome', 'apron', 'gate', 'hangar', 'holding_position', 'parking_position', 'runway', 'taxilane', 'taxiway', 'terminal', 'tower'];
+        let query = '';
+        for (const param of params) {
+            query += `node["aeroway"="${param}"](area.searchArea);way["aeroway"="${param}"](area.searchArea);relation["aeroway"="${param}"](area.searchArea);`;
+        }
+        return `[out:json];area[icao~"${icao}"]->.searchArea;(${query});out meta;out meta qt;`;
     };
 
     return (
