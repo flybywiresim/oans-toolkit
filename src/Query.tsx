@@ -11,16 +11,19 @@ type BaseOverpassElement = {
     version: number;
 }
 
-export type OverpassElement =
-    (BaseOverpassElement & {
-        type: 'way';
-        tags: { [key: string]: string };
-        nodes: (number | Coordinates)[];
-    }) | (BaseOverpassElement & {
-        type: 'node';
-        lat: number;
-        lon: number;
-    })
+export type NodeOverpassElement = BaseOverpassElement & {
+    type: 'node';
+    lat: number;
+    lon: number;
+}
+
+export type WayOverpassElement = BaseOverpassElement & {
+    type: 'way';
+    tags: { [key: string]: string };
+    nodes: (number | Coordinates)[];
+}
+
+export type OverpassElement = NodeOverpassElement | WayOverpassElement;
 
 const FormattedObject = ({ object }: { object: Record<string, any> }) => (
     <>

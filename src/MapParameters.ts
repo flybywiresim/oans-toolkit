@@ -1,6 +1,4 @@
-import { bearingTo, distanceTo, Coordinates } from 'msfs-geo';
-
-type Degrees = number;
+import { bearingTo, Coordinates, distanceTo } from 'msfs-geo';
 
 export class MapParameters {
     public centerCoordinates: Coordinates;
