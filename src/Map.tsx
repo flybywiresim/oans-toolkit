@@ -11,8 +11,14 @@ interface MapProps {
 }
 
 export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
+    const [frameTime, setFrameTime] = useState(0);
+
     const [offsetX, setOffsetX] = useState(0);
     const [offsetY, setOffsetY] = useState(0);
+
+    const [radius, setRadius] = useState(1);
+
+    const [paramsVersion, setParamsVersion] = useState(0);
 
     const WIDTH = 1000;
     const HEIGHT = 1000;
@@ -23,6 +29,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const aprons = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'apron'), [ways]);
 
+    const terminals = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'terminal'), [ways]);
+
     const taxiways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'taxiway'), [ways]);
 
     const runways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'runway'), [ways]);
@@ -31,8 +39,10 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const [wayTextPositionCache] = useState(() => new window.Map<number, [number, number]>());
 
-    const NM_RADIUS = 0.9;
-    params.current.compute({ lat: latitude, long: longitude }, NM_RADIUS, WIDTH, heading);
+    useEffect(() => {
+        params.current.compute({ lat: latitude, long: longitude }, radius, WIDTH, heading);
+        setParamsVersion(params.current.version);
+    }, [latitude, longitude, radius, WIDTH, heading]);
 
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
@@ -58,7 +68,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             wayPathCache.set(way.id, new Path2D(pathString));
             wayTextPositionCache.set(way.id, [sx + ((lx - sx) / 2), sy + ((ly - sy) / 2)]);
         }
-    }, [elements, wayPathCache, wayTextPositionCache]);
+    }, [elements, wayPathCache, wayTextPositionCache, paramsVersion]);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -66,7 +76,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         const ctx = canvasRef.current.getContext('2d');
         if (!ctx) return;
 
-        console.time('map draw');
+        const startTime = performance.now();
+
         // Store the current transformation matrix
         ctx.save();
 
@@ -96,6 +107,15 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         for (const apron of aprons) {
             const wayPath = wayPathCache.get(apron.id);
+            ctx.fill(wayPath);
+        }
+
+        // Draw terminals
+
+        ctx.fillStyle = 'cyan';
+
+        for (const terminal of terminals) {
+            const wayPath = wayPathCache.get(terminal.id);
             ctx.fill(wayPath);
         }
 
@@ -148,8 +168,10 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             }
         }
 
-        console.timeEnd('map draw');
-    }, [elements, offsetX, offsetY, heading, params.current.version, WIDTH, HEIGHT, aprons, wayPathCache, taxiways, runways, wayTextPositionCache]);
+        const timeTaken = performance.now() - startTime;
+
+        setFrameTime(timeTaken);
+    }, [elements, offsetX, offsetY, heading, params.current.version, WIDTH, HEIGHT, aprons, terminals, taxiways, runways, wayPathCache, wayTextPositionCache]);
 
     const [isPanning, setPanning] = useState(false);
 
@@ -170,9 +192,63 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const handleStopPan = () => setPanning(false);
 
+    const handleZoomIn = () => setRadius((old) => Math.max(0.1, old / 2));
+    const handleZoomOut = () => setRadius((old) => old * 2);
+
     return (
         <div>
             <canvas ref={canvasRef} height={HEIGHT} width={WIDTH} onMouseDown={handleStartPan} onMouseMove={handlePan} onMouseUp={handleStopPan} />
+
+            <span className="flex bg-gray-300 gap-x-5">
+                <span className="flex">
+                    <button type="button" className="bg-gray-400" onClick={handleZoomIn}>+</button>
+                    <button type="button" className="bg-gray-400" onClick={handleZoomOut}>-</button>
+                </span>
+            </span>
+
+            <span className="flex bg-gray-200 gap-x-10">
+                <pre>
+                    [detailed element breakdown]
+                    <br />
+                    twy=
+                    {taxiways.length}
+                    {' '}
+                    rwy=
+                    {runways.length}
+                    {' '}
+                    apr=
+                    {aprons.length}
+                    {' '}
+                    term=
+                    {terminals.length}
+                    <pre className="text-green-600">
+                        ways=
+                        {ways.length}
+                    </pre>
+
+                    <pre className="text-orange-600">
+                        nonways=
+                        {elements.length - ways.length}
+                    </pre>
+                </pre>
+
+                <pre>
+                    [render debug]
+                    <br />
+                    last frameTime=
+                    {`${frameTime}ms`}
+                </pre>
+
+                <pre>
+                    [draw cache size]
+                    <br />
+                    path=
+                    {wayPathCache.size}
+                    {' '}
+                    text=
+                    {wayTextPositionCache.size}
+                </pre>
+            </span>
         </div>
     );
 };
