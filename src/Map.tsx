@@ -2,6 +2,7 @@ import { Coordinates } from 'msfs-geo';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapParameters } from './MapParameters';
 import { OverpassElement, WayOverpassElement } from './Query';
+import towerIcon from '../public/TOWER_ICON.svg';
 
 interface MapProps {
     elements: OverpassElement[];
@@ -9,6 +10,18 @@ interface MapProps {
     longitude: number;
     heading: number;
 }
+
+const getWayCenter = (way: WayOverpassElement): Coordinates => {
+    const lowestLatitude = Math.min(...(way.nodes as Coordinates[]).map((node) => node.lat));
+    const highestLatitude = Math.max(...(way.nodes as Coordinates[]).map((node) => node.lat));
+    const lowestLongitude = Math.min(...(way.nodes as Coordinates[]).map((node) => node.long));
+    const highestLongitude = Math.max(...(way.nodes as Coordinates[]).map((node) => node.long));
+
+    return {
+        lat: (lowestLatitude + highestLatitude) / 2,
+        long: (lowestLongitude + highestLongitude) / 2,
+    };
+};
 
 export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     const [frameTime, setFrameTime] = useState(0);
@@ -34,6 +47,17 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     const taxiways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'taxiway'), [ways]);
 
     const runways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'runway'), [ways]);
+
+    const towers = useMemo(() => ways.filter(
+        (it) => ['control_tower', 'control_center', 'tower'].some((towerName) => towerName === it.tags?.aeroway) || it.tags?.man_made === 'tower',
+    ), [ways]);
+
+    const imageRef = useRef((() => {
+        const image = new Image(10, 10);
+        image.src = '../public/TOWER_ICON.svg';
+
+        return image;
+    })());
 
     const [wayPathCache] = useState(() => new window.Map<number, Path2D>());
     const [wayTextPositionCache] = useState(() => new window.Map<number, [number, number]>());
@@ -96,6 +120,25 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         const ctx = canvasRef.current.getContext('2d');
         if (!ctx) return;
+
+        const drawText = (text: string, x: number, y: number, fillStyle = 'yellow') => {
+            let string = text;
+
+            string = string.replace('Taxiway', '');
+            string = string.trim().toUpperCase();
+
+            const labelWidth = string.length * 13;
+            const labelHeight = 20;
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x - labelWidth / 2, y - labelHeight / 2 - 8, labelWidth, labelHeight);
+
+            ctx.font = '21px Ecam';
+            ctx.fillStyle = fillStyle;
+            ctx.textAlign = 'center';
+
+            ctx.fillText(string, x, y);
+        };
 
         const startTime = performance.now();
 
@@ -189,6 +232,18 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             ctx.stroke(wayPath);
         }
 
+        // Draw towers
+
+        ctx.strokeStyle = '#0f0';
+
+        for (const tower of towers) {
+            const [x, y] = params.current.coordinatesToXYy(getWayCenter(tower));
+            const IMAGE_SIZE = 32;
+            const IMAGE_OFFSET = IMAGE_SIZE / 2;
+            ctx.drawImage(imageRef.current, x - IMAGE_OFFSET, y - IMAGE_OFFSET, IMAGE_SIZE, IMAGE_SIZE);
+            drawText('TWR', x, y + IMAGE_SIZE + (IMAGE_SIZE / 8), '#0f0');
+        }
+
         ctx.setLineDash([]);
 
         // Draw taxiway lines
@@ -201,24 +256,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             ctx.stroke(wayPath);
 
             if (taxiway.tags.ref) {
-                let string = taxiway.tags.ref;
-
-                string = string.replace('Taxiway', '');
-                string = string.trim().toUpperCase();
-
-                const labelWidth = string.length * 13;
-                const labelHeight = 20;
-
                 const [x, y] = wayTextPositionCache.get(taxiway.id);
-
-                ctx.fillStyle = '#000';
-                ctx.fillRect(x - labelWidth / 2, y - labelHeight / 2 - 8, labelWidth, labelHeight);
-
-                ctx.font = '21px Ecam';
-                ctx.fillStyle = 'yellow';
-                ctx.textAlign = 'center';
-
-                ctx.fillText(string, x, y);
+                drawText(taxiway.tags.ref, x, y);
             }
         }
 
