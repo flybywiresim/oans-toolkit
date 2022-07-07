@@ -107,16 +107,12 @@ export const Query: FC = () => {
     };
 
     const generateQuery = (icao: string): string => {
-        const templateQuery = (key: string, value: string) => `node["${key}"="${value}"](area.searchArea);way["${key}"="${value}"](area.searchArea);relation["${key}"="${value}"](area.searchArea);`;
-        const aerowayParams = ['aerodome', 'apron', 'gate', 'hangar', 'holding_position', 'parking_position', 'runway', 'taxilane', 'taxiway', 'terminal', 'control_tower', 'control_center', 'tower'];
-        const manMadeParams = ['tower'];
-
+        const params = ['"aeroway"="aerodome"', '"aeroway"="apron"', '"aeroway"="gate"', '"aeroway"="hangar"', '"aeroway"="holding_position"',
+            '"aeroway"="parking_position"', '"aeroway"="runway"', '"aeroway"="taxilane"', '"aeroway"="taxiway"', '"aeroway"="terminal"',
+            '"aeroway"="tower"', '"building"', '"man_made"="tower"'];
         let query = '';
-        for (const aerowayParam of aerowayParams) {
-            query += templateQuery('aeroway', aerowayParam);
-        }
-        for (const manMadeParam of manMadeParams) {
-            query += templateQuery('man_made', manMadeParam);
+        for (const param of params) {
+            query += `node[${param}](area.searchArea);way[${param}](area.searchArea);relation[${param}](area.searchArea);`;
         }
 
         return `[out:json];area[icao~"${icao}"]->.searchArea;(${query});(._;>;);out meta;(._;>;);out meta qt;`;

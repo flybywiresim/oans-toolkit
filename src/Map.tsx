@@ -59,6 +59,9 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         return image;
     })());
 
+    const buildings = useMemo(() => ways.filter((it) => it.tags && Object.prototype.hasOwnProperty.call(it.tags, 'building')
+        && it.tags?.building !== 'storage_tank' && it.tags?.aeroway !== 'terminal'), [ways]);
+
     const [wayPathCache] = useState(() => new window.Map<number, Path2D>());
     const [wayTextPositionCache] = useState(() => new window.Map<number, [number, number]>());
 
@@ -202,6 +205,14 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
                 ctx.fillText(string, x, y);
             }
+        }
+
+        // Draw buildings
+
+        ctx.fillStyle = '#1f6cba';
+        for (const building of buildings) {
+            const wayPath = wayPathCache.get(building.id);
+            ctx.fill(wayPath);
         }
 
         // Draw taxiway pavements
