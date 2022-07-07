@@ -36,7 +36,6 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     const runways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'runway'), [ways]);
 
     const [wayPathCache] = useState(() => new window.Map<number, Path2D>());
-
     const [wayTextPositionCache] = useState(() => new window.Map<number, [number, number]>());
 
     useEffect(() => {
@@ -53,20 +52,42 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             const start = way.nodes[0] as Coordinates;
             const [sx, sy] = params.current.coordinatesToXYy(start);
 
+            let minX = sx;
+            let minY = sy;
+            let maxX = sx;
+            let maxY = sy;
+
             let pathString = `M ${sx} ${sy} `;
             let lx = sx;
             let ly = sy;
             for (let i = 1; i < way.nodes.length; i++) {
                 const [nx, ny] = params.current.coordinatesToXYy(way.nodes[i] as Coordinates);
+
+                if (nx < minX) {
+                    minX = nx;
+                }
+                if (nx > maxX) {
+                    maxX = nx;
+                }
+                if (ny < minY) {
+                    minY = ny;
+                }
+                if (ny > maxY) {
+                    maxY = ny;
+                }
+
                 pathString += `l ${nx - lx} ${ny - ly} `;
                 lx = nx;
                 ly = ny;
             }
 
+            const cx = minX + ((maxX - minX) / 2);
+            const cy = minY + ((maxY - minY) / 2);
+
             pathString = pathString.trimEnd();
 
             wayPathCache.set(way.id, new Path2D(pathString));
-            wayTextPositionCache.set(way.id, [sx + ((lx - sx) / 2), sy + ((ly - sy) / 2)]);
+            wayTextPositionCache.set(way.id, [cx, cy]);
         }
     }, [elements, wayPathCache, wayTextPositionCache, paramsVersion]);
 
@@ -112,11 +133,32 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         // Draw terminals
 
-        ctx.fillStyle = 'cyan';
-
         for (const terminal of terminals) {
+            ctx.fillStyle = 'cyan';
+
             const wayPath = wayPathCache.get(terminal.id);
             ctx.fill(wayPath);
+
+            if (terminal.tags.name) {
+                let string = terminal.tags.name;
+
+                string = string.replace('Taxiway', '');
+                string = string.trim().toUpperCase();
+
+                const labelWidth = string.length * 13;
+                const labelHeight = 20;
+
+                const [x, y] = wayTextPositionCache.get(terminal.id);
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - labelWidth / 2, y - labelHeight / 2 - 8, labelWidth, labelHeight);
+
+                ctx.font = '21px Ecam';
+                ctx.fillStyle = 'cyan';
+                ctx.textAlign = 'center';
+
+                ctx.fillText(string, x, y);
+            }
         }
 
         // Draw taxiway pavements
@@ -159,12 +201,24 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             ctx.stroke(wayPath);
 
             if (taxiway.tags.ref) {
-                ctx.font = '20px sans-serif';
+                let string = taxiway.tags.ref;
+
+                string = string.replace('Taxiway', '');
+                string = string.trim().toUpperCase();
+
+                const labelWidth = string.length * 13;
+                const labelHeight = 20;
+
+                const [x, y] = wayTextPositionCache.get(taxiway.id);
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - labelWidth / 2, y - labelHeight / 2 - 8, labelWidth, labelHeight);
+
+                ctx.font = '21px Ecam';
                 ctx.fillStyle = 'yellow';
                 ctx.textAlign = 'center';
 
-                const [x, y] = wayTextPositionCache.get(taxiway.id);
-                ctx.fillText(taxiway.tags.ref, x, y);
+                ctx.fillText(string, x, y);
             }
         }
 

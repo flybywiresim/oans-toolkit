@@ -3,6 +3,11 @@
 @tailwind screens;
 @tailwind utilities;
 
+@font-face {
+    font-family: "Ecam";
+    src: url("EcamFontRegular.ttf") format("truetype");
+}
+
 hr {
     @apply my-5;
 }
