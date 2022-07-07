@@ -82,7 +82,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const [paramsVersion, setParamsVersion] = useState(0);
 
-    const WIDTH = window.innerWidth;
+    const WIDTH = 1000;
     const HEIGHT = 1000;
 
     const params = useRef(new MapParameters());
