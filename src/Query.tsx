@@ -23,7 +23,13 @@ export type WayOverpassElement = BaseOverpassElement & {
     nodes: (number | Coordinates)[];
 }
 
-export type OverpassElement = NodeOverpassElement | WayOverpassElement;
+export type RelationOverpassElement = BaseOverpassElement & {
+    type: 'relation';
+    tags: { [key: string]: string };
+    members: ({ type: string, ref: number, role: string })[],
+}
+
+export type OverpassElement = NodeOverpassElement | WayOverpassElement | RelationOverpassElement;
 
 const FormattedObject = ({ object }: { object: Record<string, any> }) => (
     <>

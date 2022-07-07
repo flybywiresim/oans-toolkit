@@ -1,7 +1,7 @@
 import { Coordinates } from 'msfs-geo';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapParameters } from './MapParameters';
-import { OverpassElement, WayOverpassElement } from './Query';
+import { OverpassElement, RelationOverpassElement, WayOverpassElement } from './Query';
 import towerIcon from '../public/TOWER_ICON.svg';
 
 interface MapProps {
@@ -39,10 +39,14 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     const params = useRef(new MapParameters());
 
     const ways = useMemo(() => elements.filter((it) => it.type === 'way') as WayOverpassElement[], [elements]);
+    const relations = useMemo(() => elements.filter((it) => it.type === 'relation') as RelationOverpassElement[], [elements]);
 
     const aprons = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'apron'), [ways]);
 
-    const terminals = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'terminal'), [ways]);
+    const terminals = useMemo(() => [
+        ...ways.filter((it) => it.tags?.aeroway === 'terminal'),
+        ...relations.filter((it) => it.tags?.aeroway === 'terminal'),
+    ], [ways, relations]);
 
     const taxiways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'taxiway'), [ways]);
 
@@ -182,8 +186,17 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         for (const terminal of terminals) {
             ctx.fillStyle = 'cyan';
 
-            const wayPath = wayPathCache.get(terminal.id);
-            ctx.fill(wayPath);
+            if (terminal.type === 'way') {
+                const wayPath = wayPathCache.get(terminal.id);
+                ctx.fill(wayPath);
+            } else {
+                for (const member of terminal.members) {
+                    if (member.type === 'way' && member.role === 'outer') {
+                        const wayPath = wayPathCache.get(member.ref);
+                        ctx.fill(wayPath);
+                    }
+                }
+            }
 
             if (terminal.tags.name) {
                 let string = terminal.tags.name;
