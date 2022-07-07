@@ -1,35 +1,7 @@
-import { Coordinates } from 'msfs-geo';
 import { FC, useRef, useState } from 'react';
 import { Map } from './Map';
-
-type BaseOverpassElement = {
-    id: number;
-    timestamp: string;
-    changeset: number;
-    uid: number;
-    user: string;
-    version: number;
-}
-
-export type NodeOverpassElement = BaseOverpassElement & {
-    type: 'node';
-    lat: number;
-    lon: number;
-}
-
-export type WayOverpassElement = BaseOverpassElement & {
-    type: 'way';
-    tags: { [key: string]: string };
-    nodes: (number | Coordinates)[];
-}
-
-export type RelationOverpassElement = BaseOverpassElement & {
-    type: 'relation';
-    tags: { [key: string]: string };
-    members: ({ type: string, ref: number, role: string })[],
-}
-
-export type OverpassElement = NodeOverpassElement | WayOverpassElement | RelationOverpassElement;
+import { RawOverpassElement } from './RawOverpassTypes';
+import { NodeData, TransformedOverpassElement, TransformedWayOverpassElement } from './TransformedOverpassTypes';
 
 const FormattedObject = ({ object }: { object: Record<string, any> }) => (
     <>
@@ -50,7 +22,8 @@ const FormattedObject = ({ object }: { object: Record<string, any> }) => (
 
 export const Query: FC = () => {
     const inputRef = useRef<HTMLInputElement>();
-    const [elements, setElements] = useState<OverpassElement[]>([]);
+    const [rawElements, setRawElements] = useState<RawOverpassElement[]>([]);
+    const [transformedElements, setTransformedElements] = useState<TransformedOverpassElement[]>([]);
     const [isWaiting, setWaiting] = useState(false);
 
     const [planeLatitude, setPlaneLatitude] = useState(0);
@@ -68,7 +41,7 @@ export const Query: FC = () => {
     const handleIcaoFetch = (value: string) => {
         if (value.length !== 4) return;
 
-        setElements([]);
+        setRawElements([]);
         setWaiting(true);
 
         fetch(
@@ -79,15 +52,15 @@ export const Query: FC = () => {
                 headers: { 'Content-Type': 'application/xml' },
             },
         ).then((data) => data.json())
-            .then((json: { elements: OverpassElement[] }) => {
-                setElements(json.elements);
+            .then((json: { elements: RawOverpassElement[] }) => {
+                setTransformedElements(json.elements as unknown as TransformedOverpassElement[]);
                 setWaiting(false);
 
-                const map = new window.Map<number, Coordinates>();
+                const map = new window.Map<number, NodeData>();
 
                 for (const element of json.elements) {
                     if (element.type === 'node') {
-                        map.set(element.id, { lat: element.lat, long: element.lon });
+                        map.set(element.id, { location: { lat: element.lat, long: element.lon }, tags: element.tags });
                     }
                 }
 
@@ -95,11 +68,11 @@ export const Query: FC = () => {
 
                 for (const way of ways) {
                     if (way.type === 'way') {
-                        way.nodes = way.nodes.map((nodeId) => map.get(nodeId as number));
+                        (way as unknown as TransformedWayOverpassElement).nodes = way.nodes.map((nodeId) => map.get(nodeId as number));
                     }
                 }
 
-                const [{ lat, long }] = map.values();
+                const [{ location: { lat, long } }] = map.values();
                 parseAndAssignNumber(lat.toString(), setPlaneLatitude);
                 parseAndAssignNumber(long.toString(), setPlaneLongitude);
             });
@@ -113,7 +86,7 @@ export const Query: FC = () => {
     };
 
     const generateQuery = (icao: string): string => {
-        const params = ['"aeroway"="aerodome"', '"aeroway"="apron"', '"aeroway"="gate"', '"aeroway"="hangar"', '"aeroway"="holding_position"',
+        const params = ['"aeroway"="holding_position"', '"aeroway"="aerodome"', '"aeroway"="apron"', '"aeroway"="gate"', '"aeroway"="hangar"', '"aeroway"="holding_position"',
             '"aeroway"="parking_position"', '"aeroway"="runway"', '"aeroway"="taxilane"', '"aeroway"="taxiway"', '"aeroway"="terminal"',
             '"aeroway"="tower"', '"building"', '"man_made"="tower"'];
         let query = '';
@@ -176,13 +149,13 @@ export const Query: FC = () => {
                             <input type="text" placeholder="Search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                         </div>
                         <div className="mt-12">
-                            {elements.filter((node) => node.type.includes(searchQuery)).map((node) => (<FormattedObject object={node} />))}
+                            {rawElements.filter((node) => node.type.includes(searchQuery)).map((node) => (<FormattedObject object={node} />))}
                         </div>
                     </div>
                 )}
 
                 {(dataView === 'map' || dataView === 'both') && (
-                    <Map elements={elements} longitude={planeLongitude} latitude={planeLatitude} heading={planeHeading} />
+                    <Map elements={transformedElements} longitude={planeLongitude} latitude={planeLatitude} heading={planeHeading} />
                 )}
             </div>
         </div>

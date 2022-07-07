@@ -1,26 +1,75 @@
 import { Coordinates } from 'msfs-geo';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapParameters } from './MapParameters';
-import { OverpassElement, RelationOverpassElement, WayOverpassElement } from './Query';
-import towerIcon from '../public/TOWER_ICON.svg';
+import { RawRelationOverpassElement } from './RawOverpassTypes';
+import { TransformedOverpassElement, TransformedWayOverpassElement } from './TransformedOverpassTypes';
 
 interface MapProps {
-    elements: OverpassElement[];
+    elements: TransformedOverpassElement[];
     latitude: number;
     longitude: number;
     heading: number;
 }
 
-const getWayCenter = (way: WayOverpassElement): Coordinates => {
-    const lowestLatitude = Math.min(...(way.nodes as Coordinates[]).map((node) => node.lat));
-    const highestLatitude = Math.max(...(way.nodes as Coordinates[]).map((node) => node.lat));
-    const lowestLongitude = Math.min(...(way.nodes as Coordinates[]).map((node) => node.long));
-    const highestLongitude = Math.max(...(way.nodes as Coordinates[]).map((node) => node.long));
+const getWayCenter = (way: TransformedWayOverpassElement): Coordinates => {
+    const lowestLatitude = Math.min(...way.nodes.map((node) => node.location.lat));
+    const highestLatitude = Math.max(...way.nodes.map((node) => node.location.lat));
+    const lowestLongitude = Math.min(...way.nodes.map((node) => node.location.long));
+    const highestLongitude = Math.max(...way.nodes.map((node) => node.location.long));
 
     return {
         lat: (lowestLatitude + highestLatitude) / 2,
         long: (lowestLongitude + highestLongitude) / 2,
     };
+};
+
+type Point = [number, number];
+
+const zip = (...arrays: any[]) => {
+    const length = Math.min(...arrays.map((arr) => arr.length));
+    return Array.from({ length }, (value, index) => arrays.map(((array) => array[index])));
+};
+
+const circleLineSegmentIntersection = (circleCenter: Point, circleRadius: number, pt1: Point, pt2: Point, fullLine = true, tangentTol = 1e-9) => {
+    /** Find the points at which a circle intersects a line-segment.  This can happen at 0, 1, or 2 points.
+
+    :param circle_center: The (x, y) location of the circle center
+    :param circle_radius: The radius of the circle
+    :param pt1: The (x, y) location of the first point of the segment
+    :param pt2: The (x, y) location of the second point of the segment
+    :param full_line: True to find intersections along full line - not just in the segment.  False will just return intersections within the segment.
+    :param tangent_tol: Numerical tolerance at which we decide the intersections are close enough to consider it a tangent
+    :return Sequence[Tuple[float, float]]: A list of length 0, 1, or 2, where each element is a point at which the circle intercepts a line segment.
+
+    Note: We follow: http://mathworld.wolfram.com/Circle-LineIntersection.html
+    */
+
+    const [[p1x, p1y], [p2x, p2y], [cx, cy]] = [pt1, pt2, circleCenter];
+    const [[x1, y1], [x2, y2]] = [[p1x - cx, p1y - cy], [p2x - cx, p2y - cy]];
+    const [dx, dy] = [x2 - x1, y2 - y1];
+    const dr = (dx ** 2 + dy ** 2) ** 0.5;
+    const bigD = x1 * y2 - x2 * y1;
+    const discriminant = circleRadius ** 2 * dr ** 2 - bigD ** 2;
+
+    if (discriminant < 0) return []; // No intersection between circle and line
+
+    // There may be 0, 1, or 2 intersections with the segment
+    // eslint-disable-next-line max-len
+    const intersections = (dy < 0 ? [1, -1] : [-1, 1]).map((sign) => [cx + (bigD * dy + sign * (dy < 0 ? -1 : 1) * dx * discriminant ** 0.5) / dr ** 2, cy + (-bigD * dx + sign * Math.abs(dy) * discriminant ** 0.5) / dr ** 2]); // This makes sure the order along the segment is correct
+    if (!fullLine) { // If only considering the segment, filter out intersections that do not fall within the segment
+        const fractionAlongSegment = intersections.map(([xi, yi]) => (Math.abs(dx) > Math.abs(dy) ? (xi - p1x) / dx : (yi - p1y) / dy));
+        intersections.splice(0);
+        zip(intersections, fractionAlongSegment).forEach(([pt, frac]) => {
+            if (frac >= 0 && frac <= 1) {
+                intersections.push(pt);
+            }
+        });
+    }
+    if (intersections.length === 2 && Math.abs(discriminant) <= tangentTol) { // If line is tangent to circle, return just one point (as both intersections have same location)
+        return [intersections[0]];
+    }
+
+    return intersections;
 };
 
 export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
@@ -33,13 +82,13 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const [paramsVersion, setParamsVersion] = useState(0);
 
-    const WIDTH = 1000;
+    const WIDTH = window.innerWidth;
     const HEIGHT = 1000;
 
     const params = useRef(new MapParameters());
 
-    const ways = useMemo(() => elements.filter((it) => it.type === 'way') as WayOverpassElement[], [elements]);
-    const relations = useMemo(() => elements.filter((it) => it.type === 'relation') as RelationOverpassElement[], [elements]);
+    const ways = useMemo(() => elements.filter((it) => it.type === 'way') as TransformedWayOverpassElement[], [elements]);
+    const relations = useMemo(() => elements.filter((it) => it.type === 'relation') as RawRelationOverpassElement[], [elements]);
 
     const aprons = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'apron'), [ways]);
 
@@ -58,7 +107,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const imageRef = useRef((() => {
         const image = new Image(10, 10);
-        image.src = '../public/TOWER_ICON.svg';
+        image.src = '/TOWER_ICON.svg';
 
         return image;
     })());
@@ -77,10 +126,10 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
-        const ways = elements.filter((it) => it.type === 'way') as WayOverpassElement[];
+        const ways: TransformedWayOverpassElement[] = elements.filter((it) => it.type === 'way');
 
         for (const way of ways) {
-            const start = way.nodes[0] as Coordinates;
+            const start = way.nodes[0].location;
             const [sx, sy] = params.current.coordinatesToXYy(start);
 
             let minX = sx;
@@ -92,7 +141,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             let lx = sx;
             let ly = sy;
             for (let i = 1; i < way.nodes.length; i++) {
-                const [nx, ny] = params.current.coordinatesToXYy(way.nodes[i] as Coordinates);
+                const [nx, ny] = params.current.coordinatesToXYy(way.nodes[i].location);
 
                 if (nx < minX) {
                     minX = nx;
@@ -283,12 +332,41 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 const [x, y] = wayTextPositionCache.get(taxiway.id);
                 drawText(taxiway.tags.ref, x, y);
             }
+
+            for (let i = 0; i < taxiway.nodes.length; i++) {
+                const node = taxiway.nodes[i];
+
+                if (node.tags?.aeroway !== 'holding_position') continue;
+                const nextNode = taxiway.nodes[i + 1];
+                const previousNode = taxiway.nodes[i - 1];
+
+                const [x1, y1] = params.current.coordinatesToXYy(node.location);
+                const [x2, y2] = params.current.coordinatesToXYy(nextNode?.location ?? previousNode?.location);
+                const slope = (y2 - y1) / (x2 - x1);
+                const perpendicularSlope = -1 / slope;
+                const perpendicularYIntercept = y1 - perpendicularSlope * x1;
+                const DISTANCE_FROM_CENTER = 5;
+
+                const [pointOne, pointTwo] = circleLineSegmentIntersection(
+                    [x1, y1],
+                    DISTANCE_FROM_CENTER,
+                    [x1, y1],
+                    [0, perpendicularYIntercept],
+                );
+
+                ctx.strokeStyle = '#f00';
+                ctx.beginPath();
+                ctx.moveTo(pointOne[0], pointOne[1]);
+                ctx.lineTo(pointTwo[0], pointTwo[1]);
+                ctx.stroke();
+                ctx.strokeStyle = 'yellow';
+            }
         }
 
         const timeTaken = performance.now() - startTime;
 
         setFrameTime(timeTaken);
-    }, [elements, offsetX, offsetY, heading, params.current.version, WIDTH, HEIGHT, aprons, terminals, taxiways, runways, wayPathCache, wayTextPositionCache]);
+    }, [elements, offsetX, offsetY, heading, params.current.version, WIDTH, HEIGHT, aprons, terminals, taxiways, runways, wayPathCache, wayTextPositionCache, buildings, towers]);
 
     const [isPanning, setPanning] = useState(false);
 
