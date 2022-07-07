@@ -256,7 +256,9 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 const labelWidth = string.length * 13;
                 const labelHeight = 20;
 
-                const [x, y] = wayTextPositionCache.get(terminal.id);
+                const [x, y] = wayTextPositionCache.get(terminal.id) ?? [undefined, undefined];
+
+                if (x === undefined || y === undefined) continue;
 
                 ctx.fillStyle = '#000';
                 ctx.fillRect(x - labelWidth / 2, y - labelHeight / 2 - 8, labelWidth, labelHeight);
