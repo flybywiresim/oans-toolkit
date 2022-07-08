@@ -3,7 +3,9 @@
     "version": "0.1.0",
     "author": "FlyByWire Simulations",
     "scripts": {
-        "start": "vite"
+        "start:server": "ts-node-dev api/server.ts -P tsconfig.server.json",
+        "start:client": "vite",
+        "start": "concurrently \"npm run start:client\" \"npm run start:server\""
     },
     "devDependencies": {
         "@flybywiresim/eslint-config": "^0.2.3",
@@ -17,6 +19,11 @@
         "vite": "^2.9.13"
     },
     "dependencies": {
-        "msfs-geo": "^0.1.0-alpha5"
+        "@types/express": "^4.17.13",
+        "concurrently": "^7.2.2",
+        "express": "^4.18.1",
+        "msfs-geo": "^0.1.0-alpha5",
+        "node-fetch": "^2.6.7",
+        "ts-node-dev": "^2.0.0"
     }
 }

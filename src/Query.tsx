@@ -1,4 +1,5 @@
 import { FC, useRef, useState } from 'react';
+import { PORT } from '../constants';
 import { Map } from './Map';
 import { RawOverpassElement } from './RawOverpassTypes';
 import { NodeData, TransformedOverpassElement, TransformedWayOverpassElement } from './TransformedOverpassTypes';
@@ -44,14 +45,7 @@ export const Query: FC = () => {
         setRawElements([]);
         setWaiting(true);
 
-        fetch(
-            'https://overpass-api.de/api/interpreter',
-            {
-                method: 'POST',
-                body: generateQuery(value.toUpperCase()),
-                headers: { 'Content-Type': 'application/xml' },
-            },
-        ).then((data) => data.json())
+        fetch(`http://localhost:${PORT}/?search=${generateQuery(value.toUpperCase())}`).then((res) => res.json())
             .then((json: { elements: RawOverpassElement[] }) => {
                 setTransformedElements(json.elements as unknown as TransformedOverpassElement[]);
                 setWaiting(false);
