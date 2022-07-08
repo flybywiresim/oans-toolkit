@@ -269,39 +269,6 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             ctx.fill(wayPath);
         }
 
-        // Draw terminals
-
-        for (const terminal of terminals) {
-            ctx.fillStyle = 'cyan';
-
-            const terminalPath = pathCache.get(terminal.id);
-            ctx.fill(terminalPath, 'evenodd');
-
-            // TODO labels for relation-based terminals
-            if (terminal.type === 'way' && terminal.tags.name && !['warehouse', 'commercial'].includes(terminal.tags.building)) {
-                let string = terminal.tags.name;
-
-                string = string.replace('Taxiway', '');
-                string = string.trim().toUpperCase();
-
-                const labelWidth = string.length * 13;
-                const labelHeight = 20;
-
-                const [x, y] = centerPositionCache.get(terminal.id) ?? [undefined, undefined];
-
-                if (x === undefined || y === undefined) continue;
-
-                ctx.fillStyle = '#000';
-                ctx.fillRect(x - labelWidth / 2, y - labelHeight / 2 - 8, labelWidth, labelHeight);
-
-                ctx.font = '21px Ecam';
-                ctx.fillStyle = 'cyan';
-                ctx.textAlign = 'center';
-
-                ctx.fillText(string, x, y);
-            }
-        }
-
         // Draw buildings
 
         ctx.fillStyle = '#1f6cba';
@@ -402,6 +369,39 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 ctx.lineTo(pointTwo[0], pointTwo[1]);
                 ctx.stroke();
                 ctx.strokeStyle = 'yellow';
+            }
+        }
+
+        // Draw terminals
+
+        for (const terminal of terminals) {
+            ctx.fillStyle = 'cyan';
+
+            const terminalPath = pathCache.get(terminal.id);
+            ctx.fill(terminalPath, 'evenodd');
+
+            // TODO labels for relation-based terminals
+            if (terminal.type === 'way' && terminal.tags.name && !['warehouse', 'commercial'].includes(terminal.tags.building)) {
+                let string = terminal.tags.name;
+
+                string = string.replace('Taxiway', '');
+                string = string.trim().toUpperCase();
+
+                const labelWidth = string.length * 13;
+                const labelHeight = 20;
+
+                const [x, y] = centerPositionCache.get(terminal.id) ?? [undefined, undefined];
+
+                if (x === undefined || y === undefined) continue;
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - labelWidth / 2, y - labelHeight / 2 - 8, labelWidth, labelHeight);
+
+                ctx.font = '21px Ecam';
+                ctx.fillStyle = 'cyan';
+                ctx.textAlign = 'center';
+
+                ctx.fillText(string, x, y);
             }
         }
 
