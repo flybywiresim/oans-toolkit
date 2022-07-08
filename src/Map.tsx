@@ -101,6 +101,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const runways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'runway'), [ways]);
 
+    const roads = useMemo(() => ways.filter((it) => it.tags?.airside === 'yes' && it.tags?.highway === 'service'), [ways]);
+
     const towers = useMemo(() => ways.filter(
         (it) => ['control_tower', 'control_center', 'tower'].some((towerName) => towerName === it.tags?.aeroway) || it.tags?.man_made === 'tower',
     ), [ways]);
@@ -112,8 +114,15 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         return image;
     })());
 
+    const planeRef = useRef((() => {
+        const image = new Image(10, 10);
+        image.src = '/AIRCRAFT_ICON.svg';
+
+        return image;
+    })());
+
     const buildings = useMemo(() => ways.filter((it) => it.tags && Object.prototype.hasOwnProperty.call(it.tags, 'building')
-        && it.tags?.building !== 'storage_tank' && it.tags?.aeroway !== 'terminal'), [ways]);
+        && !['storage_tank', 'yes', 'transportation'].includes(it.tags?.building) && it.tags?.aeroway !== 'terminal'), [ways]);
 
     const [wayPathCache] = useState(() => new window.Map<number, Path2D>());
     const [wayTextPositionCache] = useState(() => new window.Map<number, [number, number]>());
@@ -124,6 +133,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     }, [latitude, longitude, radius, WIDTH, heading]);
 
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+    const metersToFeet = (meters: number) => meters * 3.2084;
 
     useEffect(() => {
         const ways: TransformedWayOverpassElement[] = elements.filter((it) => it.type === 'way');
@@ -218,6 +229,16 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         ctx.beginPath();
 
+        // Draw service roads
+
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = 5;
+
+        for (const road of roads) {
+            const wayPath = wayPathCache.get(road.id);
+            ctx.stroke(wayPath);
+        }
+
         ctx.strokeStyle = '#444';
         ctx.lineWidth = 10;
 
@@ -227,6 +248,14 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         for (const apron of aprons) {
             const wayPath = wayPathCache.get(apron.id);
+            ctx.fill(wayPath);
+        }
+
+        // Draw buildings
+
+        ctx.fillStyle = '#1f6cba';
+        for (const building of buildings) {
+            const wayPath = wayPathCache.get(building.id);
             ctx.fill(wayPath);
         }
 
@@ -247,7 +276,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 }
             }
 
-            if (terminal.tags.name) {
+            if (terminal.tags.name && !['warehouse', 'commercial'].includes(terminal.tags.building)) {
                 let string = terminal.tags.name;
 
                 string = string.replace('Taxiway', '');
@@ -269,14 +298,6 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
                 ctx.fillText(string, x, y);
             }
-        }
-
-        // Draw buildings
-
-        ctx.fillStyle = '#1f6cba';
-        for (const building of buildings) {
-            const wayPath = wayPathCache.get(building.id);
-            ctx.fill(wayPath);
         }
 
         // Draw taxiway pavements
@@ -318,6 +339,9 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             ctx.drawImage(imageRef.current, x - IMAGE_OFFSET, y - IMAGE_OFFSET, IMAGE_SIZE, IMAGE_SIZE);
             drawText('TWR', x, y + IMAGE_SIZE + (IMAGE_SIZE / 8), '#0f0');
         }
+
+        const [x, y] = params.current.coordinatesToXYy({ lat: latitude, long: longitude });
+        ctx.drawImage(planeRef.current, x, y, 32, 32);
 
         ctx.setLineDash([]);
 
