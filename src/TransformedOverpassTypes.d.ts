@@ -2,6 +2,7 @@ import { Coordinates } from 'msfs-geo';
 import { RawRelationOverpassElement } from './RawOverpassTypes';
 
 type BaseOverpassElement = {
+    type: string,
     id: number;
     timestamp: string;
     changeset: number;

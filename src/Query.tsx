@@ -45,7 +45,7 @@ export const Query: FC = () => {
         setRawElements([]);
         setWaiting(true);
 
-        fetch(`http://localhost:${PORT}/?search=${generateQuery(value.toUpperCase())}`).then((res) => res.json())
+        fetch(`http://localhost:${PORT}/?search=${generateQuery(value.toUpperCase())}&icao=${value.toUpperCase()}`).then((res) => res.json())
             .then((json: { elements: RawOverpassElement[] }) => {
                 setTransformedElements(json.elements as unknown as TransformedOverpassElement[]);
                 setWaiting(false);

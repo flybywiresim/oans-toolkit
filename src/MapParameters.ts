@@ -26,7 +26,7 @@ export class MapParameters {
         this.nmRadius = nmRadius;
     }
 
-    coordinatesToXYy(coordinates: Coordinates): [number, number] {
+    coordinatesToXY(coordinates: Coordinates): [number, number] {
         const bearing = bearingTo(this.centerCoordinates, coordinates) - this.mapUpTrueDeg - 90;
         const distance = distanceTo(this.centerCoordinates, coordinates);
 

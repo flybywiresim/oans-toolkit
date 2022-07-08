@@ -1,9 +1,18 @@
 import express = require('express');
 import fetch from 'node-fetch';
+import * as fs from 'fs';
 import { PORT } from '../constants';
+import { CacheService } from './cacheService';
+import { CACHE_DIRECTORY } from './constants';
 
 const app = express();
-const cacheMap = new Map<string, Record<string, any>>();
+
+const decoder = new TextDecoder();
+const encoder = new TextEncoder();
+
+if (!fs.existsSync(CACHE_DIRECTORY)) {
+    fs.mkdirSync(CACHE_DIRECTORY);
+}
 
 app.use((_, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,20 +25,30 @@ app.use((_, res, next) => {
     next();
 });
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
     const searchQuery = req.query.search as string;
     const forceFresh = req.query.forceFresh as string;
-    const cacheHit = cacheMap.get(searchQuery);
+    const icao = req.query.icao as string;
 
-    if (cacheHit && !forceFresh) {
-        res.send(cacheHit);
+    let cacheFileDataBuffer;
+    try {
+        cacheFileDataBuffer = await CacheService.readFile(icao);
+    } catch (_) {
+        // noop
+    }
+
+    if (cacheFileDataBuffer && !forceFresh) {
+        res.send(decoder.decode(cacheFileDataBuffer));
     } else {
         fetch('https://overpass-api.de/api/interpreter', {
             method: 'POST',
             body: searchQuery,
             headers: { 'Content-Type': 'application/xml' },
         }).then((data) => data.json()).then((json) => {
-            cacheMap.set(searchQuery, json);
+            const dataBuffer = encoder.encode(JSON.stringify(json));
+
+            CacheService.writeFile(icao, dataBuffer).then();
+
             res.send(json);
         });
     }

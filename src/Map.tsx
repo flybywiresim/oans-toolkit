@@ -124,8 +124,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     const buildings = useMemo(() => ways.filter((it) => it.tags && Object.prototype.hasOwnProperty.call(it.tags, 'building')
         && !['storage_tank', 'yes', 'transportation'].includes(it.tags?.building) && it.tags?.aeroway !== 'terminal'), [ways]);
 
-    const [wayPathCache] = useState(() => new window.Map<number, Path2D>());
-    const [wayTextPositionCache] = useState(() => new window.Map<number, [number, number]>());
+    const [pathCache] = useState(() => new window.Map<number, Path2D>());
+    const [centerPositionCache] = useState(() => new window.Map<number, [number, number]>());
 
     useEffect(() => {
         params.current.compute({ lat: latitude, long: longitude }, radius, WIDTH, heading);
@@ -134,14 +134,11 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
-    const metersToFeet = (meters: number) => meters * 3.2084;
-
     useEffect(() => {
-        const ways: TransformedWayOverpassElement[] = elements.filter((it) => it.type === 'way');
-
+        // Cache paths for ways
         for (const way of ways) {
             const start = way.nodes[0].location;
-            const [sx, sy] = params.current.coordinatesToXYy(start);
+            const [sx, sy] = params.current.coordinatesToXY(start);
 
             let minX = sx;
             let minY = sy;
@@ -152,7 +149,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             let lx = sx;
             let ly = sy;
             for (let i = 1; i < way.nodes.length; i++) {
-                const [nx, ny] = params.current.coordinatesToXYy(way.nodes[i].location);
+                const [nx, ny] = params.current.coordinatesToXY(way.nodes[i].location);
 
                 if (nx < minX) {
                     minX = nx;
@@ -177,10 +174,25 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
             pathString = pathString.trimEnd();
 
-            wayPathCache.set(way.id, new Path2D(pathString));
-            wayTextPositionCache.set(way.id, [cx, cy]);
+            pathCache.set(way.id, new Path2D(pathString));
+            centerPositionCache.set(way.id, [cx, cy]);
         }
-    }, [elements, wayPathCache, wayTextPositionCache, paramsVersion]);
+
+        // Cache paths for relations, by concatenating all paths of member ways
+        for (const relation of relations) {
+            const relationPath = new Path2D();
+
+            for (const member of relation.members) {
+                if (member.type === 'way' && (member.role === 'outer' || member.role === 'inner')) {
+                    const wayPath = pathCache.get(member.ref);
+
+                    relationPath.addPath(wayPath);
+                }
+            }
+
+            pathCache.set(relation.id, relationPath);
+        }
+    }, [elements, ways, relations, pathCache, centerPositionCache, paramsVersion]);
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -225,17 +237,15 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         ctx.resetTransform();
         ctx.translate(offsetX, offsetY);
 
-        ctx.fillStyle = 'yellow';
-
         ctx.beginPath();
 
         // Draw service roads
 
-        ctx.strokeStyle = 'yellow';
+        ctx.strokeStyle = 'pink';
         ctx.lineWidth = 5;
 
         for (const road of roads) {
-            const wayPath = wayPathCache.get(road.id);
+            const wayPath = pathCache.get(road.id);
             ctx.stroke(wayPath);
         }
 
@@ -247,7 +257,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         ctx.fillStyle = '#555';
 
         for (const apron of aprons) {
-            const wayPath = wayPathCache.get(apron.id);
+            const wayPath = pathCache.get(apron.id);
             ctx.fill(wayPath);
         }
 
@@ -255,7 +265,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         ctx.fillStyle = '#1f6cba';
         for (const building of buildings) {
-            const wayPath = wayPathCache.get(building.id);
+            const wayPath = pathCache.get(building.id);
             ctx.fill(wayPath);
         }
 
@@ -264,19 +274,11 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         for (const terminal of terminals) {
             ctx.fillStyle = 'cyan';
 
-            if (terminal.type === 'way') {
-                const wayPath = wayPathCache.get(terminal.id);
-                ctx.fill(wayPath);
-            } else {
-                for (const member of terminal.members) {
-                    if (member.type === 'way' && member.role === 'outer') {
-                        const wayPath = wayPathCache.get(member.ref);
-                        ctx.fill(wayPath);
-                    }
-                }
-            }
+            const terminalPath = pathCache.get(terminal.id);
+            ctx.fill(terminalPath, 'evenodd');
 
-            if (terminal.tags.name && !['warehouse', 'commercial'].includes(terminal.tags.building)) {
+            // TODO labels for relation-based terminals
+            if (terminal.type === 'way' && terminal.tags.name && !['warehouse', 'commercial'].includes(terminal.tags.building)) {
                 let string = terminal.tags.name;
 
                 string = string.replace('Taxiway', '');
@@ -285,7 +287,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 const labelWidth = string.length * 13;
                 const labelHeight = 20;
 
-                const [x, y] = wayTextPositionCache.get(terminal.id) ?? [undefined, undefined];
+                const [x, y] = centerPositionCache.get(terminal.id) ?? [undefined, undefined];
 
                 if (x === undefined || y === undefined) continue;
 
@@ -300,10 +302,21 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             }
         }
 
+        // Draw buildings
+
+        ctx.fillStyle = '#1f6cba';
+        for (const building of buildings) {
+            const wayPath = pathCache.get(building.id);
+            ctx.fill(wayPath);
+        }
+
         // Draw taxiway pavements
 
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 10;
+
         for (const taxiway of taxiways) {
-            const wayPath = wayPathCache.get(taxiway.id);
+            const wayPath = pathCache.get(taxiway.id);
             ctx.stroke(wayPath);
         }
 
@@ -313,7 +326,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         ctx.lineWidth = 24;
 
         for (const runway of runways) {
-            const wayPath = wayPathCache.get(runway.id);
+            const wayPath = pathCache.get(runway.id);
             ctx.stroke(wayPath);
         }
 
@@ -324,7 +337,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         ctx.lineWidth = 1;
 
         for (const runway of runways) {
-            const wayPath = wayPathCache.get(runway.id);
+            const wayPath = pathCache.get(runway.id);
             ctx.stroke(wayPath);
         }
 
@@ -333,14 +346,14 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         ctx.strokeStyle = '#0f0';
 
         for (const tower of towers) {
-            const [x, y] = params.current.coordinatesToXYy(getWayCenter(tower));
+            const [x, y] = params.current.coordinatesToXY(getWayCenter(tower));
             const IMAGE_SIZE = 32;
             const IMAGE_OFFSET = IMAGE_SIZE / 2;
             ctx.drawImage(imageRef.current, x - IMAGE_OFFSET, y - IMAGE_OFFSET, IMAGE_SIZE, IMAGE_SIZE);
             drawText('TWR', x, y + IMAGE_SIZE + (IMAGE_SIZE / 8), '#0f0');
         }
 
-        const [x, y] = params.current.coordinatesToXYy({ lat: latitude, long: longitude });
+        const [x, y] = params.current.coordinatesToXY({ lat: latitude, long: longitude });
         ctx.drawImage(planeRef.current, x, y, 32, 32);
 
         ctx.setLineDash([]);
@@ -351,11 +364,11 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         ctx.lineWidth = 0.75;
 
         for (const taxiway of taxiways) {
-            const wayPath = wayPathCache.get(taxiway.id);
+            const wayPath = pathCache.get(taxiway.id);
             ctx.stroke(wayPath);
 
             if (taxiway.tags.ref) {
-                const [x, y] = wayTextPositionCache.get(taxiway.id);
+                const [x, y] = centerPositionCache.get(taxiway.id);
                 drawText(taxiway.tags.ref, x, y);
             }
 
@@ -366,8 +379,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 const nextNode = taxiway.nodes[i + 1];
                 const previousNode = taxiway.nodes[i - 1];
 
-                const [x1, y1] = params.current.coordinatesToXYy(node.location);
-                const [x2, y2] = params.current.coordinatesToXYy(nextNode?.location ?? previousNode?.location);
+                const [x1, y1] = params.current.coordinatesToXY(node.location);
+                const [x2, y2] = params.current.coordinatesToXY(nextNode?.location ?? previousNode?.location);
                 const slope = (y2 - y1) / (x2 - x1);
                 const perpendicularSlope = -1 / slope;
                 const perpendicularYIntercept = y1 - perpendicularSlope * x1;
@@ -392,7 +405,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         const timeTaken = performance.now() - startTime;
 
         setFrameTime(timeTaken);
-    }, [elements, offsetX, offsetY, heading, params.current.version, WIDTH, HEIGHT, aprons, terminals, taxiways, runways, wayPathCache, wayTextPositionCache, buildings, towers]);
+    }, [elements, offsetX, offsetY, heading, params.current.version, WIDTH, HEIGHT, aprons, terminals, taxiways,
+        runways, pathCache, centerPositionCache, buildings, towers, latitude, longitude, roads]);
 
     const [isPanning, setPanning] = useState(false);
 
@@ -464,10 +478,10 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                     [draw cache size]
                     <br />
                     path=
-                    {wayPathCache.size}
+                    {pathCache.size}
                     {' '}
                     text=
-                    {wayTextPositionCache.size}
+                    {centerPositionCache.size}
                 </pre>
             </span>
         </div>
