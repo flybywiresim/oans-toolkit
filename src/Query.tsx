@@ -39,13 +39,13 @@ export const Query: FC = () => {
     ];
     const [dataView, setDataView] = useState(viewOptions[0].value);
 
-    const handleIcaoFetch = (value: string) => {
+    const handleIcaoFetch = (value: string, forceFresh: boolean) => {
         if (value.length !== 4) return;
 
         setRawElements([]);
         setWaiting(true);
 
-        fetch(`http://localhost:${PORT}/?search=${generateQuery(value.toUpperCase())}&icao=${value.toUpperCase()}`).then((res) => res.json())
+        fetch(`http://localhost:${PORT}/?search=${generateQuery(value.toUpperCase())}&icao=${value.toUpperCase()}&forceFresh=${forceFresh}`).then((res) => res.json())
             .then((json: { elements: RawOverpassElement[] }) => {
                 setTransformedElements(json.elements as unknown as TransformedOverpassElement[]);
                 setWaiting(false);
@@ -88,7 +88,7 @@ export const Query: FC = () => {
             query += `node[${param}](area.searchArea);way[${param}](area.searchArea);relation[${param}](area.searchArea);`;
         }
 
-        return `[out:json];area[icao~"${icao}"]->.searchArea;(${query});(._;>;);out meta;(._;>;);out meta qt;`;
+        return `[out:json][maxsize:2000000000];area[icao~"${icao}"]->.searchArea;(${query});(._;>;);out meta;(._;>;);out meta qt;`;
     };
 
     return (
@@ -105,10 +105,21 @@ export const Query: FC = () => {
                                 onClick={(e) => {
                                     e.preventDefault();
 
-                                    handleIcaoFetch(inputRef.current.value);
+                                    handleIcaoFetch(inputRef.current.value, false);
                                 }}
                             >
                                 Go
+                            </button>
+                            <button
+                                id="icao-input"
+                                type="submit"
+                                onClick={(e) => {
+                                    e.preventDefault();
+
+                                    handleIcaoFetch(inputRef.current.value, true);
+                                }}
+                            >
+                                Go (Fresh)
                             </button>
                         </form>
                     </div>
@@ -116,7 +127,7 @@ export const Query: FC = () => {
                     <div className="flex flex-row rounded-sm overflow-hidden">
                         {viewOptions.map((option) => (
                             <div
-                                className={`px-4 cursor-pointer h-full ${option.value === dataView ? 'bg-blue-500 text-white' : 'bg-gray-300 text-black'} transition duration-100`}
+                                className={`px-4 cursor-pointer h-full ${option.value === dataView ? 'bg-blue-500 text-white' : 'bg-gray-300 text-black'} transition duration - 100`}
                                 onClick={() => setDataView(option.value)}
                             >
                                 {option.name}
