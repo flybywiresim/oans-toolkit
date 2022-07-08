@@ -2,7 +2,7 @@ import express = require('express');
 import fetch from 'node-fetch';
 import * as fs from 'fs';
 import { PORT } from '../constants';
-import { CacheService } from './cacheService';
+import { CacheService } from './cache.service';
 import { CACHE_DIRECTORY } from './constants';
 
 const app = express();
@@ -27,7 +27,7 @@ app.use((_, res, next) => {
 
 app.get('/', async (req, res) => {
     const searchQuery = req.query.search as string;
-    const forceFresh = req.query.forceFresh as string;
+    const forceFresh = req.query.forceFresh as string === 'true';
     const icao = req.query.icao as string;
 
     let cacheFileDataBuffer;
