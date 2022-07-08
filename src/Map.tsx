@@ -353,8 +353,11 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             drawText('TWR', x, y + IMAGE_SIZE + (IMAGE_SIZE / 8), '#0f0');
         }
 
+        // Draw aircraft
         const [x, y] = params.current.coordinatesToXY({ lat: latitude, long: longitude });
-        ctx.drawImage(planeRef.current, x, y, 32, 32);
+        const IMAGE_SIZE = 32;
+        const IMAGE_OFFSET = IMAGE_SIZE / 2;
+        ctx.drawImage(planeRef.current, x - IMAGE_OFFSET, y - IMAGE_OFFSET, 32, 32);
 
         ctx.setLineDash([]);
 
