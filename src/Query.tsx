@@ -134,6 +134,10 @@ export const Query: FC = () => {
                             </div>
                         ))}
                     </div>
+
+                    {isWaiting && (
+                        <h1>Fetching data...</h1>
+                    )}
                 </div>
 
                 <div className="flex flex-row gap-x-2">
@@ -142,10 +146,6 @@ export const Query: FC = () => {
                     <input type="text" placeholder="Heading" value={planeHeading} onChange={(e) => parseAndAssignNumber(e.target.value, setPlaneHeading)} />
                 </div>
             </div>
-
-            {isWaiting && (
-                <h1>Fetching data...</h1>
-            )}
 
             <div className="flex flex-row p-2 h-screen">
                 {(dataView === 'data' || dataView === 'both') && (
