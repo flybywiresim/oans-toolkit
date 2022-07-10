@@ -462,8 +462,9 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             ctx.translate(startX, startY);
             ctx.rotate(degreesSlope);
             ctx.translate(-(runwayWidthPx / 2) + sideOffset, bottomOffset);
+            console.log(runwayWidthPx);
             xPoints.forEach((xPoint) => {
-                ctx.fillRect(0, xPoint - (runwayWidthPx / 2), RUNWAY_STRIPE_LENGTH * params.current.mToPx, THRESHOLD_STRIPE_WIDTH * params.current.mToPx);
+                ctx.fillRect(0, xPoint - (runwayWidthPx / 2) - (sideOffset * 2), THRESHOLD_STRIPE_LENGTH * params.current.mToPx, THRESHOLD_STRIPE_WIDTH * params.current.mToPx);
             });
             ctx.translate(-(-(runwayWidthPx / 2) + sideOffset), -bottomOffset);
 
