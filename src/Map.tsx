@@ -432,10 +432,10 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         const THRESHOLD_STRIPE_LENGTH: Metre = 46;
         const THRESHOLD_STRIPE_GAP: Metre = 1.5;
 
-        const drawThreshold = (startNode: NodeData, runwayWidth: number, slope: number): void => {
+        const drawThreshold = (startNode: NodeData, runwayWidth: number, slope: number, flip: boolean): void => {
             const runwayWidthPx: Pixel = (params.current.mToPx * runwayWidth);
             const [startX, startY] = params.current.coordinatesToXY(startNode.location);
-            const degreesSlope = Math.atan(slope);
+            const degreesSlope = Math.atan(slope) + (flip ? Math.PI : 0);
             const numberOfStripes = WIDTH_AND_STRIPES[getClosest(Units.metreToFoot(runwayWidth), widths)];
             const bottomOffset: Pixel = 3 * params.current.mToPx;
             const sideOffset: Pixel = 0.8 * params.current.mToPx;
@@ -494,8 +494,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
             const runwayWidth = parseInt(runway.tags?.width) ?? Units.footToMetre(150);
 
-            drawThreshold(firstNode, runwayWidth, slope);
-            drawThreshold(lastNode, runwayWidth, slope);
+            drawThreshold(firstNode, runwayWidth, slope, false);
+            drawThreshold(lastNode, runwayWidth, slope, true);
         }
 
         // Draw towers
