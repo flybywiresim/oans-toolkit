@@ -400,6 +400,8 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         ctx.lineWidth = 1 * params.current.mToPx;
 
         for (const runway of runways) {
+            if (runway.tags.runway === 'displaced_threshold') continue;
+
             const wayPath = pathCache.get(runway.id);
             ctx.stroke(wayPath);
         }
