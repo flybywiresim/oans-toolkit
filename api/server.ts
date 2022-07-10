@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { PORT } from '../constants';
 import { CacheService } from './cache.service';
 import { CACHE_DIRECTORY } from './constants';
+import { RawOverpassElement } from '../src/RawOverpassTypes';
 
 const app = express();
 
@@ -25,6 +26,22 @@ app.use((_, res, next) => {
     next();
 });
 
+type OverPassDataLimited = { elements: RawOverpassElement[] };
+const cleanse = (json: OverPassDataLimited): OverPassDataLimited => {
+    json.elements.forEach((element) => {
+        delete element.timestamp;
+        delete element.changeset;
+        delete element.uid;
+        delete element.user;
+        delete element.version;
+
+        delete element.tags?.email;
+        delete element.tags?.source;
+    });
+
+    return json;
+};
+
 app.get('/', async (req, res) => {
     const searchQuery = req.query.search as string;
     const forceFresh = req.query.forceFresh as string === 'true';
@@ -45,11 +62,10 @@ app.get('/', async (req, res) => {
             body: searchQuery,
             headers: { 'Content-Type': 'application/xml' },
         }).then((data) => data.json()).then((json) => {
-            const dataBuffer = encoder.encode(JSON.stringify(json));
-
-            CacheService.writeFile(icao, dataBuffer).then();
-
             res.send(json);
+
+            const dataBuffer = encoder.encode(JSON.stringify(cleanse(json)));
+            CacheService.writeFile(icao, dataBuffer).then();
         });
     }
 });

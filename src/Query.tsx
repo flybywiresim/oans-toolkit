@@ -67,8 +67,8 @@ export const Query: FC = () => {
                 }
 
                 const [{ location: { lat, long } }] = map.values();
-                parseAndAssignNumber(lat.toString(), setPlaneLatitude);
-                parseAndAssignNumber(long.toString(), setPlaneLongitude);
+                parseAndAssignNumber((lat + Math.random() / 1000).toString(), setPlaneLatitude);
+                parseAndAssignNumber((long + Math.random() / 1000).toString(), setPlaneLongitude);
             });
     };
 
@@ -93,7 +93,7 @@ export const Query: FC = () => {
 
     return (
         <div className="w-full overflow-x-auto">
-            <div className="flex flex-row p-4 border-b justify-between">
+            <div className="flex flex-row flex-wrap p-4 border-b justify-between">
                 <div className="flex flex-row gap-x-3">
                     <div className="flex gap-x-2">
                         <h1 className="text-xl">ICAO</h1>
