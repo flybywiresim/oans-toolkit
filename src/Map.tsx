@@ -270,7 +270,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         // Draw service roads
 
         ctx.strokeStyle = YELLOW_COLOR;
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 10 * params.current.mToPx;
 
         for (const road of roads) {
             const wayPath = pathCache.get(road.id);
