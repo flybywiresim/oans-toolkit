@@ -4,6 +4,8 @@ import { MapParameters } from './MapParameters';
 import { RawRelationOverpassElement } from './RawOverpassTypes';
 import { TransformedOverpassElement, TransformedWayOverpassElement } from './TransformedOverpassTypes';
 
+const YELLOW_COLOR = '#ccbe3d';
+
 interface MapProps {
     elements: TransformedOverpassElement[];
     latitude: number;
@@ -89,19 +91,22 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const ways = useMemo(() => elements.filter((it) => it.type === 'way') as TransformedWayOverpassElement[], [elements]);
     const relations = useMemo(() => elements.filter((it) => it.type === 'relation') as RawRelationOverpassElement[], [elements]);
-
     const aprons = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'apron'), [ways]);
+
+    const parkingPositions = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'parking_position'), [ways]);
 
     const terminals = useMemo(() => [
         ...ways.filter((it) => it.tags?.aeroway === 'terminal'),
         ...relations.filter((it) => it.tags?.aeroway === 'terminal'),
     ], [ways, relations]);
 
+    const airsideFootways = useMemo(() => ways.filter((it) => it.tags?.airside === 'yes' && it.tags?.highway === 'footway' && it.tags?.tunnel !== 'yes'), [ways]);
+
     const taxiways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'taxiway'), [ways]);
 
     const runways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'runway'), [ways]);
 
-    const roads = useMemo(() => ways.filter((it) => it.tags?.airside === 'yes' && it.tags?.highway === 'service'), [ways]);
+    const roads = useMemo(() => ways.filter((it) => it.tags?.highway === 'service'), [ways]);
 
     const towers = useMemo(() => ways.filter(
         (it) => ['control_tower', 'control_center', 'tower'].some((towerName) => towerName === it.tags?.aeroway) || it.tags?.man_made === 'tower',
@@ -200,7 +205,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         const ctx = canvasRef.current.getContext('2d');
         if (!ctx) return;
 
-        const drawText = (text: string, x: number, y: number, fillStyle = 'yellow') => {
+        const drawText = (text: string, x: number, y: number, fillStyle = YELLOW_COLOR) => {
             let string = text;
 
             string = string.replace('Taxiway', '');
@@ -241,7 +246,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         // Draw service roads
 
-        ctx.strokeStyle = 'pink';
+        ctx.strokeStyle = YELLOW_COLOR;
         ctx.lineWidth = 5;
 
         for (const road of roads) {
@@ -261,18 +266,32 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             ctx.fill(wayPath);
         }
 
-        // Draw buildings
+        // Draw parking positions
 
-        ctx.fillStyle = '#1f6cba';
-        for (const building of buildings) {
-            const wayPath = pathCache.get(building.id);
-            ctx.fill(wayPath);
+        ctx.strokeStyle = YELLOW_COLOR;
+        ctx.lineWidth = 2.5;
+
+        if (radius < 1) {
+            for (const parkingPosition of parkingPositions) {
+                const wayPath = pathCache.get(parkingPosition.id);
+                ctx.stroke(wayPath);
+
+                if (parkingPosition.tags?.ref) {
+                    const [x, y] = centerPositionCache.get(parkingPosition.id);
+                    drawText(parkingPosition.tags.ref, x, y, 'cyan');
+                }
+            }
         }
 
         // Draw buildings
 
-        ctx.fillStyle = '#1f6cba';
         for (const building of buildings) {
+            if (building.tags?.building === 'gate') {
+                ctx.fillStyle = 'cyan';
+            } else {
+                ctx.fillStyle = '#1f6cba';
+            }
+
             const wayPath = pathCache.get(building.id);
             ctx.fill(wayPath);
         }
@@ -330,7 +349,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         // Draw taxiway lines
 
-        ctx.strokeStyle = 'yellow';
+        ctx.strokeStyle = YELLOW_COLOR;
         ctx.lineWidth = 0.75;
 
         for (const taxiway of taxiways) {
@@ -368,7 +387,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 ctx.moveTo(pointOne[0], pointOne[1]);
                 ctx.lineTo(pointTwo[0], pointTwo[1]);
                 ctx.stroke();
-                ctx.strokeStyle = 'yellow';
+                ctx.strokeStyle = YELLOW_COLOR;
             }
         }
 
@@ -405,11 +424,19 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             }
         }
 
+        ctx.strokeStyle = 'cyan';
+        ctx.lineWidth = 5;
+
+        for (const airsideFootway of airsideFootways) {
+            const terminalPath = pathCache.get(airsideFootway.id);
+            ctx.stroke(terminalPath);
+        }
+
         const timeTaken = performance.now() - startTime;
 
         setFrameTime(timeTaken);
-    }, [elements, offsetX, offsetY, heading, params.current.version, WIDTH, HEIGHT, aprons, terminals, taxiways,
-        runways, pathCache, centerPositionCache, buildings, towers, latitude, longitude, roads]);
+    }, [elements, offsetX, offsetY, heading, params.current.version, WIDTH, HEIGHT, aprons, terminals, taxiways, runways, pathCache,
+        centerPositionCache, buildings, towers, latitude, longitude, roads, radius, parkingPositions, airsideFootways]);
 
     const [isPanning, setPanning] = useState(false);
 
