@@ -400,7 +400,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         ctx.lineWidth = 1 * params.current.mToPx;
 
         for (const runway of runways) {
-            if (runway.tags.runway === 'displaced_threshold') continue;
+            if (runway.tags.runway === 'displaced_threshold' || runway.tags?.runway === 'blast_pad') continue;
 
             const wayPath = pathCache.get(runway.id);
             ctx.stroke(wayPath);
@@ -484,7 +484,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         // Draw threshold stripes
 
         for (const runway of runways) {
-            if (runway.tags?.runway === 'displaced_threshold') continue;
+            if (runway.tags?.runway === 'displaced_threshold' || runway.tags?.runway === 'blast_pad') continue;
 
             const firstNode = runway.nodes[0];
             const lastNode = runway.nodes[runway.nodes.length - 1];
