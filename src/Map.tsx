@@ -6,12 +6,14 @@ import { NodeData, TransformedOverpassElement, TransformedWayOverpassElement } f
 import { Metre, Units } from './units';
 
 const RUNWAY_DEFAULT_WIDTH_METRES = 46;
-const TAXIWAY_DEFAULT_WIDTH_METRES = 23;
+const TAXIWAY_DEFAULT_WIDTH_METRES = 30;
 
 const RUNWAY_STRIPE_LENGTH = Units.footToMetre(120);
 const RUNWAY_STRIPE_GAP_LENGTH = Units.footToMetre(80);
 
-const YELLOW_COLOR = '#ccbe3d';
+const TAXIWAY_COLOR = '#e6d545';
+const SERVICE_ROAD_COLOR = '#bfb239';
+const GATE_SHAPE_COLOR = '#666';
 
 interface MapProps {
     elements: TransformedOverpassElement[];
@@ -150,7 +152,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     })());
 
     const buildings = useMemo(() => ways.filter((it) => it.tags && Object.prototype.hasOwnProperty.call(it.tags, 'building')
-        && !['storage_tank', 'yes', 'transportation'].includes(it.tags?.building) && it.tags?.aeroway !== 'terminal'), [ways]);
+        && !['storage_tank', 'transportation'].includes(it.tags?.building) && it.tags?.aeroway !== 'terminal'), [ways]);
 
     const [pathCache] = useState(() => new window.Map<number, Path2D>());
     const [centerPositionCache] = useState(() => new window.Map<number, [number, number]>());
@@ -228,7 +230,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
         const ctx = canvasRef.current.getContext('2d');
         if (!ctx) return;
 
-        const drawText = (text: string, x: number, y: number, fillStyle = YELLOW_COLOR) => {
+        const drawText = (text: string, x: number, y: number, fillStyle = TAXIWAY_COLOR) => {
             let string = text;
 
             string = string.replace('Taxiway', '');
@@ -269,7 +271,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         // Draw service roads
 
-        ctx.strokeStyle = YELLOW_COLOR;
+        ctx.strokeStyle = SERVICE_ROAD_COLOR;
         ctx.lineWidth = 10 * params.current.mToPx;
 
         for (const road of roads) {
@@ -289,9 +291,19 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
             ctx.fill(wayPath);
         }
 
-        // Draw parking positions
+        // Draw parking position pavements
 
-        ctx.strokeStyle = YELLOW_COLOR;
+        ctx.strokeStyle = GATE_SHAPE_COLOR;
+        ctx.lineWidth = Units.footToNauticalMile(200) * params.current.nmToPx;
+
+        for (const parkingPosition of parkingPositions) {
+            const wayPath = pathCache.get(parkingPosition.id);
+            ctx.stroke(wayPath);
+        }
+
+        // Draw parking position lines
+
+        ctx.strokeStyle = TAXIWAY_COLOR;
         ctx.lineWidth = 2.5;
 
         if (radius < 1) {
@@ -523,7 +535,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
         // Draw taxiway lines
 
-        ctx.strokeStyle = YELLOW_COLOR;
+        ctx.strokeStyle = TAXIWAY_COLOR;
         ctx.lineWidth = 0.75;
 
         for (const taxiway of taxiways) {
@@ -566,7 +578,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
                 ctx.moveTo(pointOne[0], pointOne[1]);
                 ctx.lineTo(pointTwo[0], pointTwo[1]);
                 ctx.stroke();
-                ctx.strokeStyle = YELLOW_COLOR;
+                ctx.strokeStyle = TAXIWAY_COLOR;
             }
         }
 
