@@ -496,8 +496,9 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
             const runwayWidth = parseInt(runway.tags?.width) ?? Units.footToMetre(150);
 
-            drawThreshold(firstNode, runwayWidth, slope, false);
-            drawThreshold(lastNode, runwayWidth, slope, true);
+            const flip = firstNode[0] > lastNode[0];
+            drawThreshold(lastNode, runwayWidth, slope, flip);
+            drawThreshold(firstNode, runwayWidth, slope, !flip);
         }
 
         // Draw towers
