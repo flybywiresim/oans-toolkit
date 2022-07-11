@@ -110,7 +110,7 @@ export class Runways {
             const slope = Utils.getSlope(firstXY, lastXY);
 
             const runwayWidth = parseInt(runway.tags?.width) ?? Units.footToMetre(150);
-            const flip = Math.round(slope) >= 0 ? lastXY[0] < firstXY[0] : lastXY[0] > firstXY[0];
+            const flip = Math.round(slope) >= 0 ? lastXY[0] < firstXY[0] : lastXY[0] < firstXY[0];
             console.log(firstXY, lastXY, slope, runway.tags?.ref, flip);
 
             Runways.drawThreshold(ctx, params, lastNode, runwayWidth, slope, flip);
