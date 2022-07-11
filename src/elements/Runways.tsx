@@ -158,19 +158,20 @@ export class Runways {
         ctx.fillStyle = 'lightGrey';
         ctx.translate(startX, startY);
         ctx.rotate(degreesSlope);
-        ctx.translate(-(runwayWidthPx / 2), bottomOffset);
+        const bruh = Runways.THRESHOLD_STRIPE_GAP * params.current.mToPx + sideOffset / 2;
+        ctx.translate(-bottomOffset, bruh);
         xPoints.forEach((xPoint) => {
             ctx.fillRect(
                 -Runways.THRESHOLD_STRIPE_LENGTH * params.current.mToPx,
-                xPoint - (runwayWidthPx / 2) - (sideOffset * 2),
+                xPoint - (runwayWidthPx / 2),
                 Runways.THRESHOLD_STRIPE_LENGTH * params.current.mToPx,
                 Runways.THRESHOLD_STRIPE_WIDTH * params.current.mToPx,
             );
         });
-        ctx.translate(0, -bottomOffset);
+        ctx.translate(0, -bruh);
         ctx.fillRect(bottomOffset, -(runwayWidthPx / 2), Runways.THRESHOLD_STRIPE_WIDTH * params.current.mToPx, runwayWidthPx);
 
-        ctx.translate((runwayWidthPx / 2), 0);
+        ctx.translate(bottomOffset, 0);
 
         ctx.rotate(-degreesSlope);
         ctx.translate(-startX, -startY);
