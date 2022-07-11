@@ -13,7 +13,7 @@ export class Runways {
 
     public static readonly WIDTHS = Object.keys(Runways.WIDTH_AND_STRIPES).map((k) => parseInt(k));
 
-    public static readonly THRESHOLD_STRIPE_WIDTH: Metre = 1;
+    public static readonly THRESHOLD_STRIPE_WIDTH: Metre = 2;
 
     public static readonly THRESHOLD_STRIPE_LENGTH: Metre = 46;
 
