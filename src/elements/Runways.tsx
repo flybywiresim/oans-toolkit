@@ -23,7 +23,7 @@ export class Runways {
 
     public static readonly RUNWAY_STRIPE_GAP_LENGTH = Units.footToMetre(80);
 
-    public static readonly RUNWAY_DEFAULT_WIDTH_METRES = 46;
+    public static readonly RUNWAY_DEFAULT_WIDTH_METRES = Units.footToMetre(150);
 
     public static draw(ctx, params, runways, pathCache) {
         // Draw runway pavements
@@ -31,7 +31,7 @@ export class Runways {
         ctx.strokeStyle = '#333';
 
         for (const runway of runways) {
-            const widthMetres = runway.tags.width ? parseInt(runway.tags.width) : Runways.RUNWAY_DEFAULT_WIDTH_METRES;
+            const widthMetres = runway.tags?.width ? parseInt(runway.tags?.width) : Runways.RUNWAY_DEFAULT_WIDTH_METRES;
             const widthFeet = Units.metreToFoot(widthMetres);
             const widthNm = Units.footToNauticalMile(widthFeet);
 
@@ -109,7 +109,7 @@ export class Runways {
 
             const slope = Utils.getSlope(firstXY, lastXY);
 
-            const runwayWidth = parseInt(runway.tags?.width) ?? Units.footToMetre(150);
+            const runwayWidth = runway.tags?.width ? parseInt(runway.tags?.width) : Runways.RUNWAY_DEFAULT_WIDTH_METRES;
             const flip = lastXY[0] < firstXY[0];
 
             Runways.drawThreshold(ctx, params, lastNode, runwayWidth, slope, flip);
@@ -118,7 +118,7 @@ export class Runways {
     }
 
     public static getClosest(value: number, array: number[]): number {
-        const index = array.findIndex((v) => v >= value);
+        const index = array.length - [...array].sort((a, b) => b - a).findIndex((v) => value >= v) - 1;
 
         if (index === array.length - 1) {
             return array[index];
