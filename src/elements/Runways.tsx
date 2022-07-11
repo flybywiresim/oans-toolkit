@@ -104,14 +104,15 @@ export class Runways {
             const firstNode = runway.nodes[0];
             const lastNode = runway.nodes[runway.nodes.length - 1];
 
-            const [x1, y1] = params.current.coordinatesToXY(firstNode.location);
-            const [x2, y2] = params.current.coordinatesToXY(lastNode.location);
+            const firstXY = params.current.coordinatesToXY(firstNode.location);
+            const lastXY = params.current.coordinatesToXY(lastNode.location);
 
-            const slope = (y2 - y1) / (x2 - x1);
+            const slope = Utils.getSlope(firstXY, lastXY);
 
             const runwayWidth = parseInt(runway.tags?.width) ?? Units.footToMetre(150);
+            const flip = Math.round(slope) >= 0 ? lastXY[0] < firstXY[0] : lastXY[0] > firstXY[0];
+            console.log(firstXY, lastXY, slope, runway.tags?.ref, flip);
 
-            const flip = firstNode[0] > lastNode[0];
             Runways.drawThreshold(ctx, params, lastNode, runwayWidth, slope, flip);
             Runways.drawThreshold(ctx, params, firstNode, runwayWidth, slope, !flip);
         }
@@ -130,7 +131,7 @@ export class Runways {
         return value >= midValue ? nextValue : array[index];
     }
 
-    public static drawThreshold(ctx: CanvasRenderingContext2D, params, startNode: NodeData, runwayWidth: number, slope: number, flip: boolean): void {
+    private static drawThreshold(ctx: CanvasRenderingContext2D, params, startNode: NodeData, runwayWidth: number, slope: number, flip: boolean): void {
         const runwayWidthPx: Pixel = (params.current.mToPx * runwayWidth);
         const [startX, startY] = params.current.coordinatesToXY(startNode.location);
         const degreesSlope = Math.atan(slope) + (flip ? Math.PI : 0);
