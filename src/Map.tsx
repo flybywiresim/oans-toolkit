@@ -1,3 +1,4 @@
+import { bearingTo, clampAngle, distanceTo, placeBearingDistance } from 'msfs-geo';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Aprons } from './elements/Aprons';
 import { Buildings } from './elements/Buildings';
@@ -11,6 +12,7 @@ import { Towers } from './elements/Towers';
 import { MapParameters } from './MapParameters';
 import { RawRelationOverpassElement } from './RawOverpassTypes';
 import { TransformedOverpassElement, TransformedWayOverpassElement } from './TransformedOverpassTypes';
+import { Units } from './units';
 
 interface MapProps {
     elements: TransformedOverpassElement[];
@@ -49,7 +51,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
 
     const taxiways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'taxiway'), [ways]);
 
-    const runways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'runway'), [ways]);
+    const runways = useMemo(() => ways.filter((it) => it.tags?.aeroway === 'runway' || it.tags?.aeroway === 'stopway'), [ways]);
 
     const roads = useMemo(() => ways.filter((it) => it.tags?.highway === 'service'), [ways]);
 
@@ -74,7 +76,7 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     const buildings = useMemo(() => ways.filter((it) => it.tags && Object.prototype.hasOwnProperty.call(it.tags, 'building')
         && !['storage_tank', 'transportation'].includes(it.tags?.building) && it.tags?.aeroway !== 'terminal'), [ways]);
 
-    const [pathCache] = useState(() => new window.Map<number, Path2D>());
+    const [pathCache] = useState(() => new window.Map<string | number, Path2D>());
     const [centerPositionCache] = useState(() => new window.Map<number, [number, number]>());
 
     useEffect(() => {
@@ -87,6 +89,48 @@ export const Map = ({ elements, latitude, longitude, heading }: MapProps) => {
     useEffect(() => {
         // Cache paths for ways
         for (const way of ways) {
+            if (way.tags?.aeroway === 'stopway' || way.tags?.runway === 'blast_pad') {
+                const firstNode = way.nodes[0];
+                const lastNode = way.nodes[way.nodes.length - 1];
+                const length = Units.nauticalMileToMetre(distanceTo(firstNode.location, lastNode.location));
+                const bearing = bearingTo(firstNode.location, lastNode.location);
+                const numberOfChevrons = Math.ceil(length / Runways.STOPWAY_CHEVRON_GAP);
+                const chevronPath = new Path2D();
+                const outlinePath = new Path2D();
+
+                for (let i = 0; i < numberOfChevrons; i++) {
+                    const offset = i * Runways.STOPWAY_CHEVRON_GAP + Runways.STOPWAY_START_OFFSET;
+                    const c = placeBearingDistance(firstNode.location, bearing, Units.metreToNauticalMile(offset));
+                    const l = placeBearingDistance(c, clampAngle(bearing - 135), 0.05);
+                    const r = placeBearingDistance(c, clampAngle(bearing + 135), 0.05);
+                    const [cx, cy] = params.current.coordinatesToXY(c);
+                    const [lx, ly] = params.current.coordinatesToXY(l);
+                    const [rx, ry] = params.current.coordinatesToXY(r);
+                    chevronPath.moveTo(lx, ly);
+                    chevronPath.lineTo(cx, cy);
+                    chevronPath.lineTo(rx, ry);
+                }
+
+                const runwayWidth = way.tags?.width ? parseInt(way.tags?.width) : Runways.RUNWAY_DEFAULT_WIDTH_METRES;
+                const cornerOne = placeBearingDistance(firstNode.location, bearing - 90, Units.metreToNauticalMile(runwayWidth / 2));
+                const cornerTwo = placeBearingDistance(firstNode.location, bearing + 90, Units.metreToNauticalMile(runwayWidth / 2));
+                const cornerThree = placeBearingDistance(lastNode.location, bearing + 90, Units.metreToNauticalMile(runwayWidth / 2));
+                const cornerFour = placeBearingDistance(lastNode.location, bearing - 90, Units.metreToNauticalMile(runwayWidth / 2));
+                const [cornerOneX, cornerOneY] = params.current.coordinatesToXY(cornerOne);
+                const [cornerTwoX, cornerTwoY] = params.current.coordinatesToXY(cornerTwo);
+                const [cornerThreeX, cornerThreeY] = params.current.coordinatesToXY(cornerThree);
+                const [cornerFourX, cornerFourY] = params.current.coordinatesToXY(cornerFour);
+
+                outlinePath.moveTo(cornerOneX, cornerOneY);
+                outlinePath.lineTo(cornerTwoX, cornerTwoY);
+                outlinePath.lineTo(cornerThreeX, cornerThreeY);
+                outlinePath.lineTo(cornerFourX, cornerFourY);
+                outlinePath.closePath();
+
+                pathCache.set(`${way.id}_outline`, outlinePath);
+                pathCache.set(`${way.id}_chevrons`, chevronPath);
+            }
+
             const start = way.nodes[0].location;
             const [sx, sy] = params.current.coordinatesToXY(start);
 

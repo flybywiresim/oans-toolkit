@@ -35,6 +35,14 @@ export class Units {
         return value * 3.28084;
     }
 
+    static nauticalMileToMetre(value: NauticalMile): Metre {
+        return value * 1852;
+    }
+
+    static metreToNauticalMile(value: Metre): NauticalMile {
+        return value / 1852;
+    }
+
     static fahrenheitToCelsius(value: Fahrenheit): Celsius {
         return (value - 32) * (5 / 9);
     }

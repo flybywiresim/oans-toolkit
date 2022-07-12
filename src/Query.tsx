@@ -81,7 +81,7 @@ export const Query: FC = () => {
 
     const generateQuery = (icao: string): string => {
         const params = ['"aeroway"="holding_position"', '"aeroway"="aerodome"', '"aeroway"="apron"', '"aeroway"="gate"', '"aeroway"="hangar"', '"aeroway"="holding_position"',
-            '"aeroway"="parking_position"', '"aeroway"="runway"', '"aeroway"="taxilane"', '"aeroway"="taxiway"', '"aeroway"="terminal"',
+            '"aeroway"="parking_position"', '"aeroway"="runway"', '"aeroway"="stopway"', '"aeroway"="taxilane"', '"aeroway"="taxiway"', '"aeroway"="terminal"',
             '"aeroway"="tower"', '"building"', '"man_made"="tower"', '"airside"="yes"', '"highway"="service"'];
         let query = '';
         for (const param of params) {

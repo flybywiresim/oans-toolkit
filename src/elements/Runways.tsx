@@ -25,7 +25,11 @@ export class Runways {
 
     public static readonly RUNWAY_DEFAULT_WIDTH_METRES = Units.footToMetre(150);
 
-    public static draw(ctx, params, runways, pathCache) {
+    public static readonly STOPWAY_CHEVRON_GAP: Metre = 25;
+
+    public static readonly STOPWAY_START_OFFSET: Metre = 24;
+
+    public static draw(ctx: CanvasRenderingContext2D, params, runways, pathCache) {
         // Draw runway pavements
 
         ctx.strokeStyle = '#333';
@@ -35,7 +39,10 @@ export class Runways {
             const widthFeet = Units.metreToFoot(widthMetres);
             const widthNm = Units.footToNauticalMile(widthFeet);
 
-            const widthPx = widthNm * params.current.nmToPx;
+            const isStopWay = runway.tags?.aeroway === 'stopway' || runway.tags?.runway === 'blast_pad';
+
+            const actualWidth = widthNm * params.current.nmToPx;
+            const widthPx = isStopWay ? actualWidth * 2 : actualWidth;
 
             ctx.lineWidth = widthPx;
             ctx.beginPath();
@@ -45,6 +52,8 @@ export class Runways {
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
             ctx.stroke();
+
+            if (isStopWay) continue;
 
             const [firstNode, lastNode] = [runway.nodes[0], runway.nodes[runway.nodes.length - 1]];
             const [firstNodePoint, lastNodePoint] = [params.current.coordinatesToXY(firstNode.location), params.current.coordinatesToXY(lastNode.location)];
@@ -90,7 +99,7 @@ export class Runways {
         ctx.lineWidth = 1 * params.current.mToPx;
 
         for (const runway of runways) {
-            if (runway.tags.runway === 'displaced_threshold' || runway.tags?.runway === 'blast_pad') continue;
+            if (runway.tags.runway === 'displaced_threshold' || runway.tags?.runway === 'blast_pad' || runway.tags?.aeroway === 'stopway') continue;
 
             const wayPath = pathCache.get(runway.id);
             ctx.stroke(wayPath);
@@ -99,7 +108,7 @@ export class Runways {
         // Draw threshold stripes
 
         for (const runway of runways) {
-            if (runway.tags?.runway === 'displaced_threshold' || runway.tags?.runway === 'blast_pad') continue;
+            if (runway.tags?.runway === 'displaced_threshold' || runway.tags?.runway === 'blast_pad' || runway.tags?.aeroway === 'stopway') continue;
 
             const firstNode = runway.nodes[0];
             const lastNode = runway.nodes[runway.nodes.length - 1];
@@ -114,6 +123,22 @@ export class Runways {
 
             Runways.drawThreshold(ctx, params, lastNode, runwayWidth, slope, flip);
             Runways.drawThreshold(ctx, params, firstNode, runwayWidth, slope, !flip);
+        }
+
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1 * params.current.mToPx;
+        ctx.strokeStyle = '#fff';
+        // Draw stopway / blast pad chevrons
+        for (const runway of runways) {
+            if (runway.tags?.runway !== 'blast_pad' && runway.tags?.aeroway !== 'stopway') continue;
+
+            const chevronPath = pathCache.get(`${runway.id}_chevrons`);
+            const outlinePath = pathCache.get(`${runway.id}_outline`);
+
+            ctx.save();
+            ctx.clip(outlinePath);
+            ctx.stroke(chevronPath);
+            ctx.restore();
         }
     }
 
