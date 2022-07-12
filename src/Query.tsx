@@ -33,8 +33,8 @@ export const Query: FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
     const viewOptions = [
-        { name: 'DATA', value: 'data' },
         { name: 'MAP', value: 'map' },
+        { name: 'DATA', value: 'data' },
         { name: 'BOTH', value: 'both' },
     ];
     const [dataView, setDataView] = useState(viewOptions[0].value);
