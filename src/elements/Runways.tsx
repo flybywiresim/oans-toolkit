@@ -118,16 +118,17 @@ export class Runways {
     }
 
     public static getClosest(value: number, array: number[]): number {
-        const index = array.length - [...array].sort((a, b) => b - a).findIndex((v) => value >= v) - 1;
+        const workingArray = [...array].sort((a, b) => a - b);
+        const index = workingArray.length - [...workingArray].reverse().findIndex((v) => value >= v) - 1;
 
-        if (index === array.length - 1) {
-            return array[index];
+        if (index === workingArray.length - 1) {
+            return workingArray[index];
         }
 
-        const nextValue = array[index + 1];
-        const midValue = (value + nextValue) / 2;
+        const nextValue = workingArray[index + 1];
+        const midValue = (workingArray[index] + nextValue) / 2;
 
-        return value >= midValue ? nextValue : array[index];
+        return value >= midValue ? nextValue : workingArray[index];
     }
 
     private static drawThreshold(ctx: CanvasRenderingContext2D, params, startNode: NodeData, runwayWidth: number, slope: number, flip: boolean): void {
